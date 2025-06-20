@@ -1,9 +1,35 @@
 #!/usr/bin/env bash
 
 script_dir=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
-filter="$1"
+filter=""
+dry="0"
 
-echo "$script_dir -- $filter"
+while [[ $# > 0 ]]; do
+    if [[ $1 == "--dry" ]]; then
+        dry="1"
+    else
+        filter="$1"
+    fi
+    shift # remove the 1st arg from the args list
+done
+
+log() {
+    if [[ $dry == "1" ]]; then
+        echo "[DRY_RUN]: $@"
+    else
+        echo "$@"
+    fi
+}
+
+execute() {
+    log "execute $@"
+    if [[ $dry == "1" ]]; then
+        return
+    fi
+    "$@" # execute everything
+}
+
+log "$script_dir -- $filter"
 
 cd $script_dir
 # find executables from inside the ./runs dir (-L to resolve potential symlinks) 
@@ -11,9 +37,9 @@ scripts=$(find -L ./runs -maxdepth 1 -mindepth 1 -perm +0111 -type f)
 
 for script in $scripts; do
     if echo "$script" | grep -qv "$filter"; then # if the script name does not contain the filter
-        echo "filtering $script"
+        log "filtering $script"
         continue
     fi
 
-    ./$script
+    execute ./$script
 done
